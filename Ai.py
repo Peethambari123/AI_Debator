@@ -39,7 +39,6 @@ def simulate_ai_response(speaker):
     """Simulates an AI response after a short delay."""
     with st.spinner(f"{speaker.upper()} is thinking..."):
         time.sleep(2)  # Simulate a processing delay
-        # Example AI responses - you can expand or integrate real AI here
         example_responses = [
             "That's a valid concern. However, history shows that technological progress ultimately creates more opportunities than it eliminates.",
             "I see your point, but consider the broader implications on society and economy.",
@@ -70,7 +69,7 @@ def judge_debate():
     Scores all turns and returns the winner and scores dictionary.
     """
     scores = {}
-    for turn in st.session_state.debate_history:
+    for turn in st.session_state.get('debate_history', []):
         speaker = turn['speaker']
         if speaker not in scores:
             scores[speaker] = 0
@@ -87,13 +86,18 @@ st.set_page_config(
     layout="wide",
 )
 
-# Initialize session state variables
+# Initialize session state variables safely
 if 'app_state' not in st.session_state:
     st.session_state.app_state = 'mode-selection'
+if 'debate_mode' not in st.session_state:
     st.session_state.debate_mode = None
+if 'selected_topic' not in st.session_state:
     st.session_state.selected_topic = ''
+if 'timer_duration' not in st.session_state:
     st.session_state.timer_duration = 180  # default 3 minutes
+if 'debate_history' not in st.session_state:
     st.session_state.debate_history = []
+if 'summary' not in st.session_state:
     st.session_state.summary = None
 
 predefined_topics = [
@@ -163,13 +167,13 @@ elif st.session_state.app_state == 'timer-setup':
         value=int(st.session_state.timer_duration / 60)
     ) * 60
     
-    st.info(f"Selected Topic: **{st.session_state.selected_topic}**")
-    st.info(f"Selected Mode: **{st.session_state.debate_mode}**")
+    st.info(f"Selected Topic: **{st.session_state.get('selected_topic', 'Unknown')}**")
+    st.info(f"Selected Mode: **{st.session_state.get('debate_mode', 'Unknown')}**")
 
     if st.button("Start Debate", use_container_width=True):
         # Initialize debate history with AI opening if AI involved
         st.session_state.debate_history = []
-        if st.session_state.debate_mode in ['AI vs AI', 'AI vs Human']:
+        if st.session_state.get('debate_mode') in ['AI vs AI', 'AI vs Human']:
             add_debate_turn('ai', "Thank you for initiating this debate. I'm looking forward to a thoughtful discussion on this topic. Let's begin.")
         st.session_state.app_state = 'debate'
         st.experimental_rerun()
@@ -180,16 +184,16 @@ elif st.session_state.app_state == 'debate':
     
     with col1:
         st.header("Live Debate")
-        st.markdown(f"**Topic:** {st.session_state.selected_topic}")
-        st.markdown(f"**Mode:** {st.session_state.debate_mode}")
+        st.markdown(f"**Topic:** {st.session_state.get('selected_topic', 'Unknown')}")
+        st.markdown(f"**Mode:** {st.session_state.get('debate_mode', 'Unknown')}")
     with col2:
-        st.markdown(f"## {int(st.session_state.timer_duration/60)}:00")
+        st.markdown(f"## {int(st.session_state.get('timer_duration', 180)/60)}:00")
 
     # Start timer (blocking)
-    start_debate_timer(st.session_state.timer_duration)
+    start_debate_timer(st.session_state.get('timer_duration', 180))
 
     # Display debate history
-    for turn in st.session_state.debate_history:
+    for turn in st.session_state.get('debate_history', []):
         if turn['speaker'] in ['human', 'human1', 'human2']:
             st.markdown(
                 f'<div style="background-color: #e6f7ff; padding: 10px; border-radius: 10px; margin-bottom: 10px; margin-left: auto; max-width: 70%;">'
@@ -202,7 +206,8 @@ elif st.session_state.app_state == 'debate':
                 unsafe_allow_html=True)
 
     # Debate interaction based on mode
-    if st.session_state.debate_mode == 'AI vs AI':
+    mode = st.session_state.get('debate_mode', 'Unknown')
+    if mode == 'AI vs AI':
         # Determine next speaker: alternate between ai1 and ai2
         ai1_turns = sum(1 for t in st.session_state.debate_history if t['speaker'] == 'ai1')
         ai2_turns = sum(1 for t in st.session_state.debate_history if t['speaker'] == 'ai2')
@@ -211,7 +216,7 @@ elif st.session_state.app_state == 'debate':
         if st.button(f"Simulate {next_speaker.upper()} Turn"):
             simulate_ai_response(next_speaker)
 
-    elif st.session_state.debate_mode == 'AI vs Human':
+    elif mode == 'AI vs Human':
         user_input = st.text_input("Your argument:", key="user_argument")
         if user_input:
             add_debate_turn('human', user_input)
@@ -219,7 +224,7 @@ elif st.session_state.app_state == 'debate':
         if st.button("Simulate AI Response"):
             simulate_ai_response('ai')
 
-    elif st.session_state.debate_mode == 'Human vs Human':
+    elif mode == 'Human vs Human':
         col1, col2 = st.columns(2)
         with col1:
             user1_input = st.text_input("Human 1 argument:", key="human1_argument")
@@ -236,15 +241,15 @@ elif st.session_state.app_state == 'debate':
 elif st.session_state.app_state == 'summary':
     st.header("Debate Summary")
     
-    st.markdown(f"**Topic:** {st.session_state.selected_topic}")
-    st.markdown(f"**Mode:** {st.session_state.debate_mode}")
+    st.markdown(f"**Topic:** {st.session_state.get('selected_topic', 'Unknown')}")
+    mode = st.session_state.get('debate_mode', 'Unknown')
+    st.markdown(f"**Mode:** {mode}")
 
     winner, scores = judge_debate()
     
     if winner is None:
         st.warning("No debate turns recorded. No winner can be determined.")
     else:
-        # Map winner to user-friendly text
         winner_text = {
             'ai': 'AI',
             'human': 'Human',
@@ -260,7 +265,6 @@ elif st.session_state.app_state == 'summary':
         for speaker, score in scores.items():
             st.write(f"{speaker.capitalize()}: {score:.2f}")
 
-        # Provide a summary text (can be improved with NLP summarization)
         summary_text = (
             "The debate was evaluated based on simulated confidence and argument quality. "
             "Scores reflect the strength and clarity of each participant's arguments."
@@ -268,7 +272,6 @@ elif st.session_state.app_state == 'summary':
         st.info(summary_text)
 
     if st.button("Start New Debate"):
-        # Reset all states including mode
         st.session_state.app_state = 'mode-selection'
         st.session_state.debate_mode = None
         st.session_state.selected_topic = ''
