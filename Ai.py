@@ -1,62 +1,67 @@
 import streamlit as st
 import time
+import openai
+
+# Set your OpenAI API key securely (recommended to put in secrets.toml)
+openai.api_key = st.secrets.get("OPENAI_API_KEY")
 
 # --- Helper functions ---
 
 def start_debate_timer(duration_seconds):
-    """
-    Simulates a countdown timer using a Streamlit progress bar.
-    """
     placeholder = st.empty()
     progress_bar = st.progress(0)
 
     start_time = time.time()
     while time.time() - start_time < duration_seconds:
         time_remaining = duration_seconds - (time.time() - start_time)
-
-        # Update progress bar
         progress = (duration_seconds - time_remaining) / duration_seconds
         progress_bar.progress(progress)
 
-        # Update text placeholder
         minutes = int(time_remaining // 60)
         seconds = int(time_remaining % 60)
         placeholder.markdown(f"**Time Remaining: {minutes:02d}:{seconds:02d}**")
 
-        time.sleep(1)  # Wait for 1 second
+        time.sleep(1)
 
     progress_bar.empty()
     placeholder.empty()
     st.session_state.app_state = 'summary'
     st.experimental_rerun()
 
-
 def add_debate_turn(speaker, text):
-    """Adds a new turn to the debate history."""
     st.session_state.debate_history.append({'speaker': speaker, 'text': text})
 
+def get_ai_response(debate_history, topic):
+    """
+    Use OpenAI chat completion API to generate AI response based on debate history.
+    Format the conversation as messages with roles 'user' and 'assistant'.
+    """
+    # Prepare messages for ChatCompletion
+    messages = [
+        {"role": "system", "content": f"You are an AI debating about the topic: {topic}. Respond thoughtfully and engage with the user's arguments."}
+    ]
 
-def simulate_ai_response():
-    """Simulates an AI response after a short delay."""
-    with st.spinner("AI is thinking..."):
-        time.sleep(2)  # Simulate a processing delay
-        ai_response = (
-            "That's a valid concern. However, history shows that technological progress ultimately creates more "
-            "opportunities than it eliminates. For instance, the industrial revolution initially displaced workers "
-            "but eventually led to higher living standards."
+    for turn in debate_history:
+        role = "user" if turn['speaker'] == 'user' else 'assistant'
+        messages.append({"role": role, "content": turn['text']})
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",  # or "gpt-3.5-turbo"
+            messages=messages,
+            temperature=0.7,
+            max_tokens=200,
+            n=1,
+            stop=None,
         )
-        add_debate_turn('ai', ai_response)
-        st.experimental_rerun()
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"Error generating response: {e}"
 
+# --- App Setup ---
 
-# --- Application Setup ---
+st.set_page_config(page_title="AI Debate Platform", layout="wide")
 
-st.set_page_config(
-    page_title="AI Debate Platform",
-    layout="wide",
-)
-
-# Initialize session state variables
 if 'app_state' not in st.session_state:
     st.session_state.app_state = 'topic-selection'
     st.session_state.selected_topic = ''
@@ -71,31 +76,22 @@ predefined_topics = [
     {"title": "Climate Change Action", "description": "Debate the most effective approaches to combat climate change"},
 ]
 
-# --- UI Components ---
-
 st.title("AI Debate Platform")
 st.markdown("Test your arguments against an AI opponent.")
 
-# --- Topic Selection Screen ---
+# --- Topic Selection ---
 if st.session_state.app_state == 'topic-selection':
     st.header("Choose a Debate Topic")
     st.markdown("Select from predefined topics or create your own.")
 
     col1, col2, col3 = st.columns(3)
+    if col1.button(predefined_topics[0]['title']):
+        st.session_state.selected_topic = predefined_topics[0]['title']
+    if col2.button(predefined_topics[1]['title']):
+        st.session_state.selected_topic = predefined_topics[1]['title']
+    if col3.button(predefined_topics[2]['title']):
+        st.session_state.selected_topic = predefined_topics[2]['title']
 
-    with col1:
-        if st.button(f"{predefined_topics[0]['title']}\n\n*{predefined_topics[0]['description']}*", use_container_width=True):
-            st.session_state.selected_topic = predefined_topics[0]['title']
-    with col2:
-        if st.button(f"{predefined_topics[1]['title']}\n\n*{predefined_topics[1]['description']}*", use_container_width=True):
-            st.session_state.selected_topic = predefined_topics[1]['title']
-    with col3:
-        if st.button(f"{predefined_topics[2]['title']}\n\n*{predefined_topics[2]['description']}*", use_container_width=True):
-            st.session_state.selected_topic = predefined_topics[2]['title']
-
-    st.markdown("---")
-
-    # Custom topic input with on_change to update selected_topic
     def update_custom_topic():
         st.session_state.selected_topic = st.session_state._custom_topic_input.strip()
 
@@ -107,30 +103,23 @@ if st.session_state.app_state == 'topic-selection':
     )
 
     if st.session_state.selected_topic:
-        if st.button("Continue to Timer Setup", use_container_width=True):
+        if st.button("Continue to Timer Setup"):
             st.session_state.app_state = 'timer-setup'
-            st.rerun()
+            st.experimental_rerun()
 
-# --- Timer Setup Screen ---
+# --- Timer Setup ---
 elif st.session_state.app_state == 'timer-setup':
     st.header("Set Debate Timer")
-    st.markdown("How long would you like the debate to last?")
-
-    st.session_state.timer_duration = st.slider(
-        "Debate Duration (minutes)",
-        min_value=1,
-        max_value=10,
-        value=int(st.session_state.timer_duration / 60)
-    ) * 60
-
+    st.session_state.timer_duration = st.slider("Debate Duration (minutes)", 1, 10, int(st.session_state.timer_duration / 60)) * 60
     st.info(f"Selected Topic: **{st.session_state.selected_topic}**")
 
-    if st.button("Start Debate", use_container_width=True):
+    if st.button("Start Debate"):
+        # Initial AI opening statement
+        st.session_state.debate_history = [{'speaker': 'ai', 'text': f"Let's begin the debate on: {st.session_state.selected_topic}. I look forward to your arguments."}]
         st.session_state.app_state = 'debate'
-        st.session_state.debate_history = [{'speaker': 'ai', 'text': "Thank you for initiating this debate. I'm looking forward to a thoughtful discussion on this topic. Let's begin."}]
-        st.rerun()
+        st.experimental_rerun()
 
-# --- Debate Screen ---
+# --- Debate ---
 elif st.session_state.app_state == 'debate':
     col1, col2 = st.columns([3, 1])
 
@@ -140,10 +129,7 @@ elif st.session_state.app_state == 'debate':
     with col2:
         st.markdown(f"## {int(st.session_state.timer_duration / 60)}:00")
 
-    # Run the timer
-    start_debate_timer(st.session_state.timer_duration)
-
-    # Display debate history
+    # Show debate history
     for turn in st.session_state.debate_history:
         if turn['speaker'] == 'user':
             st.markdown(
@@ -158,30 +144,35 @@ elif st.session_state.app_state == 'debate':
                 unsafe_allow_html=True
             )
 
+    # Debate input box and submission
     def on_user_submit():
         user_input = st.session_state.user_argument.strip()
         if user_input:
             add_debate_turn('user', user_input)
             st.session_state.user_argument = ""
 
-    st.text_input("Speak or type your argument:", key="user_argument", on_change=on_user_submit)
+            # Generate AI response immediately
+            ai_text = get_ai_response(st.session_state.debate_history, st.session_state.selected_topic)
+            add_debate_turn('ai', ai_text)
+            st.experimental_rerun()
 
-    if st.button("Simulate AI Response"):
-        simulate_ai_response()
+    st.text_input("Your argument:", key="user_argument", on_change=on_user_submit)
 
-# --- Summary Screen ---
+    # Start the timer (runs blocking, so place after UI inputs)
+    start_debate_timer(st.session_state.timer_duration)
+
+# --- Summary ---
 elif st.session_state.app_state == 'summary':
     st.header("Debate Summary")
 
     st.markdown(f"**Topic:** {st.session_state.selected_topic}")
 
-    # Simulated summary data
+    # You could dynamically generate a summary with AI here too, but for now:
     st.session_state.summary = {
-        'summary': "The debate centered around the impact of technology on society. The user raised concerns about ethical implications, while the AI argued that technological progress ultimately benefits society. Both sides presented reasonable arguments, with the AI providing more historical evidence to support its claims.",
+        'summary': "The debate covered various points. The AI and user exchanged arguments thoughtfully.",
         'winner': 'ai'
     }
 
-    # Display result
     result_text = "AI Won" if st.session_state.summary['winner'] == 'ai' else "You Won!"
     st.markdown(f"<h2 style='text-align: center;'>Debate Result: {result_text}</h2>", unsafe_allow_html=True)
 
