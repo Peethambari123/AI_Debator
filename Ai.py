@@ -4,32 +4,29 @@ import random
 
 # --- Helper functions ---
 
-def start_debate_timer(duration_seconds):
+def start_debate_timer_non_blocking(duration_seconds):
     """
-    Simulates a countdown timer using a Streamlit progress bar.
+    Non-blocking countdown timer using session state and time checks.
     """
-    placeholder = st.empty()
-    progress_bar = st.progress(0)
+    if 'timer_start' not in st.session_state:
+        st.session_state.timer_start = time.time()
     
-    start_time = time.time()
-    while time.time() - start_time < duration_seconds:
-        time_remaining = duration_seconds - (time.time() - start_time)
-        
-        # Update progress bar
-        progress = (duration_seconds - time_remaining) / duration_seconds
-        progress_bar.progress(progress)
-
-        # Update text placeholder
-        minutes = int(time_remaining // 60)
-        seconds = int(time_remaining % 60)
-        placeholder.markdown(f"**Time Remaining: {minutes:02d}:{seconds:02d}**")
-
-        time.sleep(1) # Wait for 1 second
-
-    progress_bar.empty()
-    placeholder.empty()
-    st.session_state.app_state = 'summary'
-    st.experimental_rerun()
+    elapsed = time.time() - st.session_state.timer_start
+    time_remaining = max(0, duration_seconds - elapsed)
+    
+    minutes = int(time_remaining // 60)
+    seconds = int(time_remaining % 60)
+    
+    progress = min(elapsed / duration_seconds, 1.0) if duration_seconds > 0 else 1.0
+    
+    st.progress(progress)
+    st.markdown(f"**Time Remaining: {minutes:02d}:{seconds:02d}**")
+    
+    if time_remaining <= 0:
+        # Timer finished
+        st.session_state.app_state = 'summary'
+        del st.session_state['timer_start']
+        st.experimental_rerun()
 
 def add_debate_turn(speaker, text):
     """Adds a new turn to the debate history."""
@@ -189,8 +186,8 @@ elif st.session_state.app_state == 'debate':
     with col2:
         st.markdown(f"## {int(st.session_state.get('timer_duration', 180)/60)}:00")
 
-    # Start timer (blocking)
-    start_debate_timer(st.session_state.get('timer_duration', 180))
+    # Use non-blocking timer
+    start_debate_timer_non_blocking(st.session_state.get('timer_duration', 180))
 
     # Display debate history
     for turn in st.session_state.get('debate_history', []):
