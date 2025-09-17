@@ -186,4 +186,4 @@ elif st.session_state.app_state == 'summary':
         st.session_state.debate_history = []
         st.session_state.summary = None
         st.session_state.user_argument = ""
-        st.experimental_rerun()
+        st.rerun()
