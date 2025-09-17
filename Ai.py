@@ -57,6 +57,7 @@ if 'app_state' not in st.session_state:
     st.session_state.timer_duration = 180
     st.session_state.debate_history = []
     st.session_state.summary = None
+    st.session_state.user_argument = ""  # Track user input text
 
 predefined_topics = [
     {"title": "AI's Impact on Employment", "description": "Debate whether AI will create more jobs than it displaces"},
@@ -138,13 +139,12 @@ elif st.session_state.app_state == 'debate':
         else:
             st.markdown(f'<div style="background-color: #f0f0f0; padding: 10px; border-radius: 10px; margin-bottom: 10px; max-width: 70%;">**AI:** {turn["text"]}</div>', unsafe_allow_html=True)
 
-    user_input = st.text_input("Speak or type your argument:", key="user_argument")
-    if user_input:
+    user_input = st.text_input("Speak or type your argument:", key="user_argument", value=st.session_state.user_argument)
+
+    if user_input and user_input != "":
         add_debate_turn('user', user_input)
-        st.rerun()
-    
-    if st.button("Simulate AI Response"):
-        simulate_ai_response()
+        st.session_state.user_argument = ""  # Clear input box after submission
+        simulate_ai_response()  # AI responds automatically
 
 # --- Summary Screen ---
 elif st.session_state.app_state == 'summary':
