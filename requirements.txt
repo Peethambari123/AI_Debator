@@ -1,0 +1,7 @@
+streamlit
+openai
+google-generativeai
+google-cloud-texttospeech
+google-cloud-firestore
+fastapi
+uvicorn
