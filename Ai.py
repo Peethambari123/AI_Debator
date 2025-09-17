@@ -3,7 +3,7 @@ import time
 import openai
 
 # Set your OpenAI API key securely (recommended to put in secrets.toml)
-openai.api_key = st.secrets.get("OPENAI_API_KEY")
+openai.api_key = st.secrets.get("AIzaSyDXuDTH5QEicZOQnG5xA7e5qqAx_Vojfw0")
 
 # --- Helper functions ---
 
