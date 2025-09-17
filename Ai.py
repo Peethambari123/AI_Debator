@@ -8,7 +8,7 @@ from google.cloud import texttospeech_v1 as texttospeech
 # Load Google Cloud credentials from environment variables
 # For production, use environment variables. For local testing, you can use a file path.
 # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "path/to/your/service-account-key.json"
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+genai.configure(api_key=os.environ.get("AIzaSyDXuDTH5QEicZOQnG5xA7e5qqAx_Vojfw0"))
 
 # Initialize APIs
 tts_client = texttospeech.TextToSpeechClient()
