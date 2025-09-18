@@ -3,43 +3,17 @@ import time
 
 # --- Helper functions ---
 
-def start_debate_timer(duration_seconds):
-    """
-    Simulates a countdown timer using a Streamlit progress bar.
-    """
-    placeholder = st.empty()
-    progress_bar = st.progress(0)
-    
-    start_time = time.time()
-    while time.time() - start_time < duration_seconds:
-        time_remaining = duration_seconds - (time.time() - start_time)
-        
-        # Update progress bar
-        progress = (duration_seconds - time_remaining) / duration_seconds
-        progress_bar.progress(progress)
-
-        # Update text placeholder
-        minutes = int(time_remaining // 60)
-        seconds = int(time_remaining % 60)
-        placeholder.markdown(f"**Time Remaining: {minutes:02d}:{seconds:02d}**")
-
-        time.sleep(1) # Wait for 1 second
-
-    progress_bar.empty()
-    placeholder.empty()
-    st.session_state.app_state = 'summary'
-    st.rerun()
-
 def add_debate_turn(speaker, text):
     """Adds a new turn to the debate history."""
     st.session_state.debate_history.append({'speaker': speaker, 'text': text})
 
 def simulate_ai_response():
-    """Simulates an AI response after a short delay."""
+    """Simulates an AI response."""
     with st.spinner("AI is thinking..."):
         time.sleep(2)  # Simulate a processing delay
         ai_response = "That's a valid concern. However, history shows that technological progress ultimately creates more opportunities than it eliminates. For instance, the industrial revolution initially displaced workers but eventually led to higher living standards."
         add_debate_turn('ai', ai_response)
+        # Rerun to display the new message
         st.experimental_rerun()
 
 
@@ -57,6 +31,7 @@ if 'app_state' not in st.session_state:
     st.session_state.timer_duration = 180
     st.session_state.debate_history = []
     st.session_state.summary = None
+    st.session_state.debate_start_time = None
 
 predefined_topics = [
     {"title": "AI's Impact on Employment", "description": "Debate whether AI will create more jobs than it displaces"},
@@ -73,9 +48,9 @@ st.markdown("Test your arguments against an AI opponent.")
 if st.session_state.app_state == 'topic-selection':
     st.header("Choose a Debate Topic")
     st.markdown("Select from predefined topics or create your own.")
-    
+
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
         if st.button(f"{predefined_topics[0]['title']}\n\n*{predefined_topics[0]['description']}*", use_container_width=True):
             st.session_state.selected_topic = predefined_topics[0]['title']
@@ -98,7 +73,7 @@ if st.session_state.app_state == 'topic-selection':
     if st.session_state.selected_topic:
         if st.button("Continue to Timer Setup", use_container_width=True):
             st.session_state.app_state = 'timer-setup'
-            st.rerun()
+            st.experimental_rerun()
 
 # --- Timer Setup Screen ---
 elif st.session_state.app_state == 'timer-setup':
@@ -116,8 +91,9 @@ elif st.session_state.app_state == 'timer-setup':
 
     if st.button("Start Debate", use_container_width=True):
         st.session_state.app_state = 'debate'
+        st.session_state.debate_start_time = time.time()
         st.session_state.debate_history = [{'speaker': 'ai', 'text': "Thank you for initiating this debate. I'm looking forward to a thoughtful discussion on this topic. Let's begin."}]
-        st.rerun()
+        st.experimental_rerun()
 
 # --- Debate Screen ---
 elif st.session_state.app_state == 'debate':
@@ -126,25 +102,47 @@ elif st.session_state.app_state == 'debate':
     with col1:
         st.header("Live Debate")
         st.markdown(f"**Topic:** {st.session_state.selected_topic}")
+    
     with col2:
-        st.markdown(f"## {int(st.session_state.timer_duration/60)}:00")
+        # Calculate time remaining
+        elapsed_time = time.time() - st.session_state.debate_start_time
+        time_remaining = st.session_state.timer_duration - elapsed_time
+
+        if time_remaining <= 0:
+            st.session_state.app_state = 'summary'
+            st.experimental_rerun()
+            
+        minutes = int(time_remaining // 60)
+        seconds = int(time_remaining % 60)
+        st.markdown(f"## {minutes:02d}:{seconds:02d}")
         
-    start_debate_timer(st.session_state.timer_duration)
+    st.markdown("---")
 
-    # Display debate history
-    for turn in st.session_state.debate_history:
-        if turn['speaker'] == 'user':
-            st.markdown(f'<div style="background-color: #e6f7ff; padding: 10px; border-radius: 10px; margin-bottom: 10px; margin-left: auto; max-width: 70%;">**You:** {turn["text"]}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div style="background-color: #f0f0f0; padding: 10px; border-radius: 10px; margin-bottom: 10px; max-width: 70%;">**AI:** {turn["text"]}</div>', unsafe_allow_html=True)
-
-    user_input = st.text_input("Speak or type your argument:", key="user_argument")
+    # The debate container (chat-like interface)
+    debate_container = st.container(height=400)
+    with debate_container:
+        # Display debate history
+        for turn in st.session_state.debate_history:
+            if turn['speaker'] == 'user':
+                st.markdown(f'<div style="background-color: #e6f7ff; padding: 10px; border-radius: 10px; margin-bottom: 10px; margin-left: auto; max-width: 70%;">**You:** {turn["text"]}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div style="background-color: #f0f0f0; padding: 10px; border-radius: 10px; margin-bottom: 10px; max-width: 70%;">**AI:** {turn["text"]}</div>', unsafe_allow_html=True)
+                
+    st.markdown("---")
+    
+    user_input = st.chat_input("Type your argument:")
     if user_input:
         add_debate_turn('user', user_input)
-        st.rerun()
-    
-    if st.button("Simulate AI Response"):
         simulate_ai_response()
+
+    if st.button("End Debate", use_container_width=True):
+        st.session_state.app_state = 'summary'
+        st.experimental_rerun()
+        
+    # Re-run the app every second to update the timer
+    time.sleep(1)
+    st.experimental_rerun()
+
 
 # --- Summary Screen ---
 elif st.session_state.app_state == 'summary':
