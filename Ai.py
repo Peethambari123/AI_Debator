@@ -138,35 +138,3 @@ elif st.session_state.app_state == 'debate':
     if st.button("End Debate", use_container_width=True):
         st.session_state.app_state = 'summary'
         st.experimental_rerun()
-        
-    # Re-run the app every second to update the timer
-    time.sleep(1)
-    st.experimental_rerun()
-
-
-# --- Summary Screen ---
-elif st.session_state.app_state == 'summary':
-    st.header("Debate Summary")
-    
-    st.markdown(f"**Topic:** {st.session_state.selected_topic}")
-
-    # Simulated summary data
-    st.session_state.summary = {
-        'summary': "The debate centered around the impact of technology on society. The user raised concerns about ethical implications, while the AI argued that technological progress ultimately benefits society. Both sides presented reasonable arguments, with the AI providing more historical evidence to support its claims.",
-        'winner': 'ai'
-    }
-
-    # Display result
-    result_text = "AI Won" if st.session_state.summary['winner'] == 'ai' else "You Won!"
-    st.markdown(f"<h2 style='text-align: center;'>Debate Result: {result_text}</h2>", unsafe_allow_html=True)
-
-    st.subheader("Debate Summary")
-    st.info(st.session_state.summary['summary'])
-
-    if st.button("Start New Debate"):
-        st.session_state.app_state = 'topic-selection'
-        st.session_state.selected_topic = ''
-        st.session_state.timer_duration = 180
-        st.session_state.debate_history = []
-        st.session_state.summary = None
-        st.experimental_rerun()
