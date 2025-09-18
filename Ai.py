@@ -3,9 +3,10 @@ import time
 import google.generativeai as genai
 
 # --- API Configuration ---
-# Ensure you have your Google API key stored in Streamlit secrets
+# This block attempts to get the API key from Streamlit's secrets.
+# It will only fail if you haven't set up the secrets file correctly.
 try:
-    genai.configure(api_key=st.secrets["AIzaSyAif2gyzlv5JEIHoMXFoC2FtxBW4ibkWHc"])
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 except KeyError:
     st.error("API key not found. Please add your Google API key to Streamlit secrets.")
     st.stop()
