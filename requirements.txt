@@ -1,7 +1,12 @@
 streamlit
+aiohttp
+beautifulsoup4
+requests
+urllib3
 openai
-google-generativeai
-google-cloud-texttospeech
-google-cloud-firestore
-fastapi
-uvicorn
+langgraph
+langchain-core
+pydantic
+pandas
+python-dotenv
+typing-extensions
